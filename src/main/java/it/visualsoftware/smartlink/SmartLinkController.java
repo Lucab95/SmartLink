@@ -1,7 +1,10 @@
 package it.visualsoftware.smartlink;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,7 +13,9 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import it.visualsoftware.smartlink.models.*;
+import it.visualsoftware.smartlink.models.DTOLink;
+import it.visualsoftware.smartlink.models.DTOResponse;
+import it.visualsoftware.smartlink.models.Request;
 import it.visualsoftware.smartlink.repositories.RequestRepository;
 import lombok.extern.slf4j.Slf4j;
 /**
@@ -24,6 +29,8 @@ import lombok.extern.slf4j.Slf4j;
 class SmartLinkController {
 	private final RequestRepository repository;
 	private RestTemplateService proxy;
+	@Value("${click.domain}")
+	private String url;
 	
 	
 	public SmartLinkController(RequestRepository repository, RestTemplateService proxy) {
@@ -37,23 +44,22 @@ class SmartLinkController {
 	 * @return String time
 	 */
 	public String convertTime(Date time) {
-		//DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss dd/MM/yyyy");
+		DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss dd/MM/yyyy");
 		if (time!=null) {
-			return  time.toString();
-			//dateFormat.format(time);
+			return dateFormat.format(time);
 		}else {
 			return null;
 		}
 	}
 	public String getStatus(Request userReq) {
-		String end = convertTime(userReq.getExpiration());
-		String curr= convertTime(new Date());
-		String status = "clicked";
+		Long end = userReq.getExpiration().getTime();
+		Long curr= new Date().getTime();
+		String status = "cliccato";
 		if (userReq.getClickDate()==null) {
 			if (curr.compareTo(end)<0) {
-				status="active";
+				status="attivo";
 			}else {
-				status="expired";
+				status="scaduto";
 			}
 		}
 		return status;
@@ -68,12 +74,10 @@ class SmartLinkController {
 	public String getRequestByUUId(@PathVariable String uUId) {
 		Request userReq = repository.findByUUId(uUId);
 		if (userReq==null) {
-			throw new RuntimeException("Request not found");
+			throw new RuntimeException("Impossibile trovare la richiesta");
 		}
-		log.info("request trovata: "+userReq);
-		//controlla tempo e click
-		if (getStatus(userReq)!="active") {
-		//if ((userReq.getClickDate() != null)||(curr>expire)){
+		log.info("Request trovata: "+userReq);
+		if (getStatus(userReq)!="attivo") {
 			throw new RuntimeException("il link è scaduto");
 		}
 		//else
@@ -83,7 +87,7 @@ class SmartLinkController {
 	}
 	
 	/**
-	 * preso l'uuid controlla se il link  è stato cliccato o no, ritorna informazioni sul link
+	 * preso l'uuid controlla se il link  è stato cliccato o no, ritorna un oggetto con le informazioni sul link
 	 * @param body 
 	 * @return DTOResponse
 	 */
@@ -93,23 +97,11 @@ class SmartLinkController {
 		if (userReq==null) {
 			throw new RuntimeException("req not found");
 		}
-		//String creation = convertTime(userReq.getCreation());
-		String end = convertTime(userReq.getExpiration());
 		String creation = convertTime(userReq.getCreation());
-		String curr = convertTime(new Date());
-		String click = convertTime(userReq.getClickDate());
-		String status = getStatus(userReq);
-		
-		DTOResponse dTO = new DTOResponse(userReq.getBody(),status,creation, end,click);
-		if (click==null) {
-			if (curr.compareTo(end)<0) {
-				dTO.setStatus("active");
-			}else {
-				dTO.setStatus("expired");
-			}
-			return dTO;
-		}
-		dTO.setStatus("clicked");
+		String expiration = convertTime(userReq.getExpiration());
+		String click = convertTime(userReq.getClickDate());	
+		DTOResponse dTO = new DTOResponse(userReq.getBody() , creation, expiration , click , getStatus(userReq));
+		//log.info("creation:" +userReq.getCreation().getTime()+" expiration: "+userReq.getExpiration().getTime());
 		return dTO;
 	}
 	
@@ -132,13 +124,13 @@ class SmartLinkController {
 	
 	@PostMapping("/createLink")
 	public Object createLinkDTO(@RequestBody Request userReq){
+		//TODO redirect uri
 		//redirecturi se valorizzato mi rimanda ad un link specificato altrimenti nessuna response
 		log.info("oggetto ricevuto dalla POST "+ userReq.toString());
-		String url = "http://localhost:8088/api/" +userReq.getuUId(); //parametro @value properties
-		userReq.setClickableUrl(url);
+		String finalUrl = url +userReq.getuUId(); 
+		userReq.setClickableUrl(finalUrl);
 		repository.save(userReq);
-		//DTOLink resp = new DTOLink(url);
-		return (new DTOLink(url));
+		return (new DTOLink(finalUrl));
 	}
 	
 }

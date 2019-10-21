@@ -54,12 +54,10 @@ public class RestTemplateService {
 		//save mongo
 		if(response.getStatusCode().value()==200) {
 			log.info("success");
+			userReq.setClickDate(new Date());
+			repository.save(userReq);
 		}
-		userReq.setClickDate(new Date());
-		repository.save(userReq);
 		//save e click
-		
-		//response da restituire o no
 		return (response.getStatusCode()+" "+response.getBody());
  	}
  	
