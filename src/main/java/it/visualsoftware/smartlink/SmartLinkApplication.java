@@ -9,7 +9,8 @@ public class SmartLinkApplication {
 	
 	public static void main(String[] args) {
 		SpringApplication.run(SmartLinkApplication.class, args);
-		/*SmartLinkClient sLClient = new SmartLinkClient()
+		
+		/*SmartLinkClient sLClient = new SmartLinkClient();
 		sLClient.postCustomer();*/
 	}
 	

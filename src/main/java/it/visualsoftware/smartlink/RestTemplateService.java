@@ -18,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-public class RestTemplateService {
+public class RestTemplateService  {
  	
 	
 	private final RestTemplate template;
@@ -28,17 +28,22 @@ public class RestTemplateService {
  	}
  	
 
- 	/**
- 	 * prende l'utente, gestisce la richiesta ed effettua la chiamata POST/GET
- 	 * @param userReq
- 	 * @param repository 
- 	 */
+/**
+ * prende l'utente, gestisce la richiesta, setta gli header necessari
+ * se tutto va bene, allora aggiorna il campo cliccato inserendogli la data in cui è avvenuto.
+ * @param userReq
+ * @param repository
+ * @return RedirectURI  stringa contenente l'uri del reindirizzamento può essere null
+ */
  	public String sendRequest(Request userReq, RequestRepository repository) {
  		String user = null;
  		HttpHeaders headers = new HttpHeaders();
  		if (userReq.getApiK()!=null){
  			headers.set("Authorization","Bearer "+userReq.getApiK());
- 		}else{
+ 		}else if (userReq.getLeadAuth()!=null){
+ 			headers.set("api-key",userReq.getLeadAuth().getApi());
+ 			headers.set("tenant-id",userReq.getLeadAuth().getTenant());
+ 		}else if (userReq.getAuth()!=null){
  			String auth = userReq.getAuth().getUsr() + ":" + userReq.getAuth().getPass();
 	        byte[] encodedAuth = Base64.encodeBase64( auth.getBytes(Charset.forName("ASCII")) );
 	        String authHeader = "Basic " + new String( encodedAuth );
@@ -49,16 +54,18 @@ public class RestTemplateService {
  		if (httpMethod.equals("POST")) {user = userReq.getBody().toString();}
  		String uri = userReq.getUri();
 		HttpEntity<String> req = new HttpEntity<String>( user , headers);
-		log.info("template exchange");
+		log.info("effettua richiesta "+HttpMethod.valueOf(httpMethod)+" all'indirizzo "+ uri + " inviando: " + req.toString());
 		ResponseEntity<String> response = template.exchange( uri , HttpMethod.valueOf(httpMethod) , req , String.class);
-		//save mongo
-		if(response.getStatusCode().value()==200) {
-			log.info("success");
+		log.info("esito della richiesta: "+ response.getStatusCode());
+		if(response.getStatusCodeValue()==200) {
+			//click update & save
 			userReq.setClickDate(new Date());
 			repository.save(userReq);
 		}
-		//save e click
-		return (response.getStatusCode()+" "+response.getBody());
+		if (userReq.getRedirectURI()!=null) {
+			return (userReq.getRedirectURI());
+		}
+		return null;
  	}
  	
  	

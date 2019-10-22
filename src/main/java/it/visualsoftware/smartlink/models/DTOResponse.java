@@ -3,6 +3,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Getter @Setter
+/**
+ * DTO di risposta quando si controlla la validità di una richiesta
+ * @author luca9
+ *
+ */
 public class DTOResponse {
 	public String body;
 	public String status;

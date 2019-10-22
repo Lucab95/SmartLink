@@ -1,6 +1,8 @@
 package it.visualsoftware.smartlink.repositories;
-import it.visualsoftware.smartlink.models.Request;
+
 import org.springframework.data.mongodb.repository.MongoRepository;
+
+import it.visualsoftware.smartlink.models.Request;
 
 public interface RequestRepository extends MongoRepository<Request, String> {
 	/**
